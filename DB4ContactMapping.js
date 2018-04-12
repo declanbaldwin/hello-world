@@ -11,11 +11,6 @@ function getContactDetails() {
                 let lastName = IFieldDetails.getField('Contact.last_name').getValue();
                 let dob = IFieldDetails.getField('Contact.C$date_of_birth').getValue();
 
-                console.log('contact ID: ' + contactID);
-                console.log('first name: ' + firstName);
-                console.log('last name: ' + lastName);
-                console.log('dob: ' + dob);
-
                 contactQuery(contactID, firstName, lastName);
             });
         });
@@ -99,56 +94,61 @@ function checkFields(data) {
         console.log('originalContactID not found');
         return;
     }
-    let dataToBeMapped = {};
-    let arrayOfFieldDetails = [];
+
     let arrayOfAddressWorkspaceFields = [
         'Contact.city',
-        'Contact.country',
-        'Contact.postalCode',
+        'Contact.country_id',
+        'Contact.postal_code',
         'Contact.stateOrProvince',
         'Contact.street'
     ];
 
-    let dataKeys = [
-        'city',
-        'country',
-        'postalCode',
-        'stateOrProvince',
-        'street'
-    ];
+    let addressDataToBeMapped = {
+        address: {}
+    }
+//If someone knows a better way please tell me
     ORACLE_SERVICE_CLOUD.extension_loader.load("CUSTOM_APP_ID", "1")
     .then(function (IExtensionProvider) {
         IExtensionProvider.registerWorkspaceExtension(function (WorkspaceRecord) {
-            WorkspaceRecord.getFieldValues(arrayOfAddressWorkspaceFields).then(function (IFieldDetails) {
-                for (let i = 0; i < arrayOfAddressWorkspaceFields.length; i++) {
-                    arrayOfFieldDetails[i] = IFieldDetails.getField(arrayOfAddressWorkspaceFields[i]).getValue();
-                }
-                
-                console.log(arrayOfFieldDetails);
+            WorkspaceRecord.getFieldValues([
+                'Contact.city',
+                'Contact.country_id',
+                'Contact.postal_code',
+                'Contact.stateOrProvince',
+                'Contact.street'
+            ]).then(function (IFieldDetails) {
 
-                //only pass data that is not null
-                for (let i = 0; i < arrayOfFieldDetails.length; i++) {
-                    console.log(arrayOfFieldDetails[i]);
-                    if (arrayOfFieldDetails[i] !== null) {
-                        console.log(arrayOfFieldDetails[i]);
-                        dataToBeMapped[dataKeys[i]] = arrayOfFieldDetails[i];
-                    }
+                if (IFieldDetails.getField('Contact.city').getValue() !== null) {
+                    addressDataToBeMapped.address.city = IFieldDetails.getField('Contact.city').getValue();
                 }
-                
-                console.log(dataToBeMapped);
-                updateOriginalContact(originalContactID, dataToBeMapped);
+                if (IFieldDetails.getField('Contact.country_id').getValue() !== null) {
+                    addressDataToBeMapped.address.country = {};
+                    addressDataToBeMapped.address.country.id = IFieldDetails.getField('Contact.country_id').getValue();
+                }
+                if (IFieldDetails.getField('Contact.postal_code').getValue() !== null) {
+                    addressDataToBeMapped.address.postalCode = IFieldDetails.getField('Contact.postal_code').getValue();
+                }
+                if (IFieldDetails.getField('Contact.stateOrProvince').getValue() !== null) {
+                    addressDataToBeMapped.address.stateOrProvince = IFieldDetails.getField('Contact.stateOrProvince').getValue();
+                }
+                if (IFieldDetails.getField('Contact.street').getValue() !== null) {
+                    addressDataToBeMapped.address.street = IFieldDetails.getField('Contact.street').getValue();
+                }
+   
+                console.log(addressDataToBeMapped);
+                updateOriginalContact(originalContactID, addressDataToBeMapped);
             });
         });
     });
-    
 }
+
+
+
 
 function updateOriginalContact(originalContactID, dataToBeMapped) {
     console.log('start updateOriginalContact function');
 
-    let mappedJSONData = JSON.stringify({
-        "address": dataToBeMapped
-    });
+    let mappedJSONData = JSON.stringify(dataToBeMapped);
 
     let request = new XMLHttpRequest();
     request.open("POST", `https://opn-boxfusion-uk.rightnowdemo.com/services/rest/connect/v1.3/contacts/${originalContactID}`);
@@ -187,5 +187,3 @@ function main() {
 }
 
 main();
-
-
